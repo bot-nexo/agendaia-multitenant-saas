@@ -10,10 +10,11 @@ export const getNegociosPendientes = async (_req: Request, res: Response<ApiResp
     const { data: negocios, error } = await supabaseAdmin
       .from('negocios')
       .select('*')
-      .eq('estado_verificacion', 'PENDIENTE');
+      .eq('estado_verificacion', 'pendiente');
     if (error) {
       return res.status(500).json({ success: false, error: error.message });
     }
+    console.log("data", { success: true, data: negocios });
     return res.json({ success: true, data: negocios });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });

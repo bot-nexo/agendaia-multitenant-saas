@@ -1,5 +1,6 @@
 export type TipoPlan = 'basico' | 'pro' | 'enterprise';
 export type EstadoSuscripcion = 'ACTIVO' | 'VENCIDO_GRACIA' | 'SUSPENDIDO';
+export type EstadoVerificacion = 'PENDIENTE' | 'APROBADO' | 'BLOQUEADO';
 export type RolUsuario = 'SUPERADMIN' | 'ADMIN_NEGOCIO' | 'superadmin' | 'admin' | 'personal';
 export type TipoTransaccionCredito = 'RECARGA' | 'DEBITO_BOT' | 'AJUSTE_MANUAL' | 'RECARGA_MANUAL' | 'CONSUMO_BOT';
 export type EstadoSolicitudRecarga = 'PENDIENTE' | 'APROBADO' | 'RECHAZADO';
@@ -16,6 +17,7 @@ export interface Negocio {
   tipo_plan?: TipoPlan;
   saldo_creditos: number;
   estado_suscripcion: EstadoSuscripcion;
+  estado_verificacion: EstadoVerificacion;
   prompt_personalidad: string;
   instancia_evolution_id?: string | null;
   created_at: string;

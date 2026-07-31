@@ -3,18 +3,13 @@ import { api } from '../services/api';
 import { Negocio, TransaccionCredito, SolicitudRecarga } from '../types';
 import {
   Building2,
-  Users,
   Coins,
   Calendar,
   MessageSquare,
-  TrendingUp,
   Plus,
-  Edit,
   DollarSign,
   ShieldCheck,
-  AlertCircle,
   Search,
-  Filter,
   CheckCircle2,
   XCircle,
   AlertTriangle,
@@ -26,8 +21,10 @@ import {
   FileText,
   X,
   ExternalLink,
-  BarChart3
+  BarChart3,
 } from 'lucide-react';
+import { FourSquare } from 'react-loading-indicators';
+import LoaderNexo from '../components/LoaderNexo';
 
 export const SuperAdminDashboard: React.FC = () => {
   const [negocios, setNegocios] = useState<Negocio[]>([]);
@@ -93,10 +90,20 @@ export const SuperAdminDashboard: React.FC = () => {
   // Load pending verification businesses
   const loadPendingNegocios = async () => {
     try {
+      setLoading(true)
       const data = await api.admin.getNegociosPendientes();
       setNegociosPendientes(data);
+      const [solicitudesData, negociosData] = await Promise.all([
+        api.admin.getSolicitudesRecarga(),
+        api.admin.getNegociosPendientes(),
+      ]);
+      console.log('Solicitudes:', solicitudesData);
+      console.log('Negocios:', negociosData);
     } catch (err: any) {
       console.error('Error loading pending negocios', err);
+    }
+    finally {
+      setLoading(false)
     }
   }
 
@@ -210,6 +217,12 @@ export const SuperAdminDashboard: React.FC = () => {
     }
   };
 
+  const loader = () => {
+    return (
+      <FourSquare color={["#3910ea", "#5e3bf2", "#856bf5", "#ac9bf8"]} />
+    )
+  }
+
   const filteredNegocios = negocios.filter(
     (n) =>
       n.nombre_comercial.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -217,6 +230,12 @@ export const SuperAdminDashboard: React.FC = () => {
       (n.admin_correo && n.admin_correo.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  //***************************** */
+  if (loading) {
+    return (
+      <LoaderNexo />
+    )
+  }
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 p-4 sm:p-6 lg:p-8 space-y-6">
       {/* Top Banner */}
@@ -306,22 +325,20 @@ export const SuperAdminDashboard: React.FC = () => {
       <div className="flex border-b border-slate-200 space-x-6 text-sm font-medium">
         <button
           onClick={() => setActiveTab('negocios')}
-          className={`pb-3 border-b-2 flex items-center space-x-2 transition ${
-            activeTab === 'negocios'
-              ? 'border-indigo-600 text-indigo-600 font-semibold'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
+          className={`pb-3 border-b-2 flex items-center space-x-2 transition ${activeTab === 'negocios'
+            ? 'border-indigo-600 text-indigo-600 font-semibold'
+            : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
         >
           <Building2 className="w-4 h-4" />
           <span>Directorio de Negocios</span>
         </button>
         <button
           onClick={() => setActiveTab('solicitudes')}
-          className={`pb-3 border-b-2 flex items-center space-x-2 transition ${
-            activeTab === 'solicitudes'
-              ? 'border-indigo-600 text-indigo-600 font-semibold'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
+          className={`pb-3 border-b-2 flex items-center space-x-2 transition ${activeTab === 'solicitudes'
+            ? 'border-indigo-600 text-indigo-600 font-semibold'
+            : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
         >
           <CreditCard className="w-4 h-4" />
           <span>Solicitudes de Recarga</span>
@@ -333,37 +350,34 @@ export const SuperAdminDashboard: React.FC = () => {
         </button>
         <button
           onClick={() => setActiveTab('transacciones')}
-          className={`pb-3 border-b-2 flex items-center space-x-2 transition ${
-            activeTab === 'transacciones'
-              ? 'border-indigo-600 text-indigo-600 font-semibold'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
+          className={`pb-3 border-b-2 flex items-center space-x-2 transition ${activeTab === 'transacciones'
+            ? 'border-indigo-600 text-indigo-600 font-semibold'
+            : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
         >
           <History className="w-4 h-4" />
           <span>Historial de Créditos</span>
         </button>
         <button
           onClick={() => setActiveTab('analitica')}
-          className={`pb-3 border-b-2 flex items-center space-x-2 transition ${
-            activeTab === 'analitica'
-              ? 'border-indigo-600 text-indigo-600 font-semibold'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
+          className={`pb-3 border-b-2 flex items-center space-x-2 transition ${activeTab === 'analitica'
+            ? 'border-indigo-600 text-indigo-600 font-semibold'
+            : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
         >
           <BarChart3 className="w-4 h-4" />
           <span>Ingresos & Analítica Plataforma</span>
         </button>
-          <button
-            onClick={() => setActiveTab('pendientes')}
-            className={`pb-3 border-b-2 flex items-center space-x-2 transition ${
-              activeTab === 'pendientes'
-                ? 'border-indigo-600 text-indigo-600 font-semibold'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+        <button
+          onClick={() => setActiveTab('pendientes')}
+          className={`pb-3 border-b-2 flex items-center space-x-2 transition ${activeTab === 'pendientes'
+            ? 'border-indigo-600 text-indigo-600 font-semibold'
+            : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
-          >
-            <Clock className="w-4 h-4" />
-            <span>Pendientes</span>
-          </button>
+        >
+          <Clock className="w-4 h-4" />
+          <span>Pendientes Activación</span>
+        </button>
       </div>
 
       {/* Tab Content: Directores de Negocios */}
@@ -485,14 +499,20 @@ export const SuperAdminDashboard: React.FC = () => {
       {activeTab === 'pendientes' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs">
-            <h3 className="text-base font-semibold text-slate-900">Negocios Pendientes de Verificación</h3>
+            <h3 className="text-base font-semibold text-slate-900">Negocios Pendientes de Activación</h3>
             <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold">
-              {negociosPendientes.length} Pendientes
+              {negociosPendientes.length} Solicitudes
+            </span>
+            <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold">
+              {negociosPendientes.length} Sin Pagar
+            </span>
+            <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold">
+              {negociosPendientes.length} Para Verificación
             </span>
           </div>
           {negociosPendientes.length === 0 ? (
             <div className="bg-white rounded-xl border border-slate-200 p-12 text-center space-y-3">
-              <p className="font-semibold text-slate-700">No hay negocios pendientes de verificación.</p>
+              <p className="font-semibold text-slate-700">No hay negocios pendientes de activación.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -542,67 +562,7 @@ export const SuperAdminDashboard: React.FC = () => {
           )}
         </div>
       )}
-      {/* Tab Content: Negocios Pendientes de Verificación */}
-      {activeTab === 'pendientes' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs">
-            <h3 className="text-base font-semibold text-slate-900">Negocios Pendientes de Verificación</h3>
-            <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold">
-              {negociosPendientes.length} Pendientes
-            </span>
-          </div>
-          {negociosPendientes.length === 0 ? (
-            <div className="bg-white rounded-xl border border-slate-200 p-12 text-center space-y-3">
-              <p className="font-semibold text-slate-700">No hay negocios pendientes de verificación.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-700">
-                <thead className="bg-slate-50 text-slate-500 uppercase text-[11px] tracking-wider font-semibold border-b border-slate-200">
-                  <tr>
-                    <th className="px-6 py-4">Negocio</th>
-                    <th className="px-6 py-4">Administrador</th>
-                    <th className="px-6 py-4">Plan</th>
-                    <th className="px-6 py-4">Créditos</th>
-                    <th className="px-6 py-4">Estado</th>
-                    <th className="px-6 py-4 text-right">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {negociosPendientes.map((n) => (
-                    <tr key={n.id_negocio} className="hover:bg-slate-50/80 transition">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-3">
-                          <img src={n.logo_url || 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=150'} alt={n.nombre_comercial} className="w-10 h-10 rounded-lg object-cover border border-slate-200" />
-                          <div>
-                            <p className="font-semibold text-slate-900">{n.nombre_comercial}</p>
-                            <p className="text-xs text-slate-500">{n.telefono_whatsapp}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="text-slate-800 font-medium">{n.admin_nombre}</p>
-                        <p className="text-xs text-slate-500">{n.admin_correo}</p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="uppercase text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200/60">{n.tipo_plan}</span>
-                      </td>
-                      <td className="px-6 py-4 font-bold text-amber-700">{n.saldo_creditos} crd</td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200/60">Pendiente</span>
-                      </td>
-                      <td className="px-6 py-4 text-right space-x-2">
-                        <button onClick={() => handleAprobarNegocio(n.id_negocio)} className="px-2.5 py-1.5 bg-emerald-600 text-white rounded text-xs hover:bg-emerald-700 transition">Aprobar</button>
-                        <button onClick={() => handleBloquearNegocio(n.id_negocio)} className="px-2.5 py-1.5 bg-rose-600 text-white rounded text-xs hover:bg-rose-700 transition">Bloquear</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
+
       {/* Tab Content: Solicitudes de Recarga (Approval Panel) */}
       {activeTab === 'solicitudes' && (
         <div className="space-y-4">
@@ -633,11 +593,10 @@ export const SuperAdminDashboard: React.FC = () => {
               {solicitudes.map((sol) => (
                 <div
                   key={sol.id_solicitud}
-                  className={`bg-white rounded-xl border p-5 shadow-xs space-y-4 transition ${
-                    sol.estado === 'PENDIENTE'
-                      ? 'border-amber-300 ring-1 ring-amber-200/60'
-                      : 'border-slate-200'
-                  }`}
+                  className={`bg-white rounded-xl border p-5 shadow-xs space-y-4 transition ${sol.estado === 'PENDIENTE'
+                    ? 'border-amber-300 ring-1 ring-amber-200/60'
+                    : 'border-slate-200'
+                    }`}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
                     <div className="flex items-center space-x-3">
@@ -654,13 +613,12 @@ export const SuperAdminDashboard: React.FC = () => {
 
                     <div className="flex items-center space-x-2">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center space-x-1 ${
-                          sol.estado === 'APROBADO'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : sol.estado === 'RECHAZADO'
+                        className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center space-x-1 ${sol.estado === 'APROBADO'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : sol.estado === 'RECHAZADO'
                             ? 'bg-rose-100 text-rose-800'
                             : 'bg-amber-100 text-amber-800'
-                        }`}
+                          }`}
                       >
                         {sol.estado === 'APROBADO' && <CheckCircle2 className="w-3.5 h-3.5" />}
                         {sol.estado === 'RECHAZADO' && <XCircle className="w-3.5 h-3.5" />}
@@ -1197,5 +1155,6 @@ export const SuperAdminDashboard: React.FC = () => {
         </div>
       )}
     </div>
-  );
-};
+
+  )
+}

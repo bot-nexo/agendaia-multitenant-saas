@@ -5,17 +5,16 @@ import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
 import { TenantDashboard } from './pages/TenantDashboard';
 import { LoginPage } from './pages/LoginPage';
 import { RegistrationComplete } from './components/RegistrationComplete';
-import { ShieldAlert, Loader2 } from 'lucide-react';
+import { PendingVerificationScreen } from './components/PendingVerificationScreen';
+import { ShieldAlert } from 'lucide-react';
+import LoaderNexo from './components/LoaderNexo';
 
 function AppContent() {
   const { user, negocio, loading, error } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col items-center justify-center space-y-4">
-        <Loader2 className="w-10 h-10 text-indigo-600 animate-spin" />
-        <p className="text-sm font-medium text-slate-500">Iniciando plataforma multitenant AgendaIA...</p>
-      </div>
+      <LoaderNexo />
     );
   }
 
@@ -45,17 +44,22 @@ function AppContent() {
     return <RegistrationComplete />;
   }
 
+  if (!user.es_superadmin && negocio?.estado_verificacion === 'pendiente') {
+    return <PendingVerificationScreen />;
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       <Navbar />
       <div className="flex-1">
-        {user.es_superadmin ? <SuperAdminDashboard /> : <TenantDashboard />}
+        {user.es_superadmin ? <SuperAdminDashboard isLoading={loading} /> : <TenantDashboard />}
       </div>
     </div>
   );
 }
 
 export default function App() {
+
   return (
     <AuthProvider>
       <AppContent />

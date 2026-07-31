@@ -1,4 +1,6 @@
+import { CreateReferenciaPagoInput, CreateTransaccionCreditos, ReferenciaPago } from '@/server/types';
 import { supabase } from '../lib/supabase';
+
 import {
   Negocio,
   Cita,
@@ -127,6 +129,7 @@ export const api = {
       const res = await fetch(`${API_BASE}/pending/negocios-pendientes`, { headers: await getHeaders() });
       return handleResponse<Negocio[]>(res);
     },
+
     aprobarNegocio: async (id_negocio: string) => {
       const res = await fetch(`${API_BASE}/pending/negocios/${id_negocio}/aprobar`, {
         method: 'PATCH',
@@ -134,6 +137,7 @@ export const api = {
       });
       return handleResponse<any>(res);
     },
+
     bloquearNegocio: async (id_negocio: string) => {
       const res = await fetch(`${API_BASE}/pending/negocios/${id_negocio}/bloquear`, {
         method: 'PATCH',
@@ -142,6 +146,7 @@ export const api = {
       return handleResponse<any>(res);
     },
 
+    //Aprobar solicitud de recarga
     aprobarSolicitudRecarga: async (id_solicitud: string, notas_admin?: string) => {
       const res = await fetch(`${API_BASE}/admin/solicitudes-recarga/${id_solicitud}/aprobar`, {
         method: 'PATCH',
@@ -345,4 +350,61 @@ export const api = {
       return handleResponse<SolicitudRecarga>(res);
     },
   },
+
+
+  crearReferencia: async (payload: CreateReferenciaPagoInput): Promise<ReferenciaPago> => {
+    const { data, error } = await supabase
+      .from('referencias_pago')
+      .insert([payload])
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Error al registrar la referencia de pago: ${error.message}`);
+    }
+
+    return data;
+  },
+
+  obtenerTransaccionesPorNegocio: async (idNegocio: string): Promise<ReferenciaPago[]> => {
+    const { data, error } = await supabase
+      .from('transacciones_credito')
+      .select('*')
+      .eq('id_negocio', idNegocio)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new Error(`Error al consultar referencias: ${error.message}`);
+    }
+
+    return data || [];
+  },
+
+  buscarPorReferencia: async (referencia: string): Promise<ReferenciaPago | null> => {
+    const { data, error } = await supabase
+      .from('referencias_pago')
+      .select('*')
+      .eq('referencia', referencia)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Error al buscar la referencia: ${error.message}`);
+    }
+
+    return data;
+  },
+
+  crearTransaccionCreditos: async (payload: CreateTransaccionCreditos): Promise<TransaccionCredito> => {
+    const { data, error } = await supabase
+      .from('transacciones_credito')
+      .insert([payload])
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Error al registrar la transaccion de creditos: ${error.message}`);
+    }
+
+    return data;
+  }
 };

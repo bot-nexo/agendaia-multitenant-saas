@@ -6,13 +6,14 @@
 export type TipoPlan = 'basico' | 'pro' | 'enterprise';
 export type EstadoSuscripcion = 'ACTIVO' | 'VENCIDO_GRACIA' | 'SUSPENDIDO';
 export type RolUsuario = 'superadmin' | 'admin' | 'personal';
-export type TipoTransaccionCredito = 'RECARGA_MANUAL' | 'CONSUMO_BOT' | 'PROMO' | 'SUSCRIPCION';
+export type TipoTransaccionCredito = 'RECARGA_MANUAL' | 'PROMO' | 'SUSCRIPCION';
 export type EstadoSolicitudRecarga = 'PENDIENTE' | 'APROBADO' | 'RECHAZADO';
 export type EstadoCita = 'confirmado' | 'pendiente' | 'en_proceso' | 'completado' | 'cancelado';
 export type OrigenCita = 'whatsapp' | 'web' | 'app';
 export type TipoRemitente = 'cliente' | 'bot' | 'agente';
 export type EstadoMensaje = 'enviado' | 'entregado' | 'leido';
 
+export type EstadoVerificacion = 'PENDIENTE' | 'APROBADO' | 'BLOQUEADO';
 export interface Negocio {
   id_negocio: string;
   nombre_comercial: string;
@@ -21,6 +22,7 @@ export interface Negocio {
   tipo_plan: TipoPlan;
   saldo_creditos: number;
   estado_suscripcion: EstadoSuscripcion;
+  estado_verificacion: EstadoVerificacion;
   prompt_personalidad: string;
   created_at: string;
   updated_at: string;
@@ -38,18 +40,6 @@ export interface Perfil {
   created_at: string;
   updated_at: string;
 }
-
-export interface TransaccionCredito {
-  id_transaccion: string;
-  id_negocio: string;
-  monto: number;
-  tipo: TipoTransaccionCredito;
-  descripcion?: string | null;
-  id_referencia?: string | null;
-  creado_por?: string | null;
-  created_at: string;
-}
-
 export interface SolicitudRecarga {
   id_solicitud: string;
   id_negocio: string;
@@ -142,6 +132,47 @@ export interface ListaBlancaBot {
   nombre: string;
   telefono: string;
   created_at: string;
+}
+
+export interface ReferenciaPago {
+  id_referencia: string;
+  id_negocio: string;
+  referencia: string;
+  fecha_pago: string; // formato YYYY-MM-DD
+  nombre_pagador: string;
+  cedula_pagador: string;
+  url_referencia: string;
+  canal_pago: string;
+}
+
+export interface CreateReferenciaPagoInput {
+  id_referencia: string;
+  id_negocio: string;
+  referencia: string;
+  fecha_pago: string;
+  nombre_pagador: string;
+  cedula_pagador: string;
+  url_referencia: string;
+  canal_pago: string;
+}
+
+//Transaccion de creditos
+export interface TransaccionCredito {
+  id_transaccion: string;
+  id_negocio: string;
+  id_referencia: string;
+  descripcion?: string | null;
+  monto: number;
+  tipo: TipoTransaccionCredito;
+}
+
+export interface CreateTransaccionCreditos {
+  id_transaccion: string;
+  id_negocio: string;
+  id_referencia: string;
+  descripcion?: string | null;
+  monto: number;
+  tipo: TipoTransaccionCredito;
 }
 
 /**

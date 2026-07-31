@@ -126,6 +126,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const res = await api.getMe();
+      console.log(res);
+
+      if (!res.usuario.es_superadmin && res.negocio?.estado_verificacion === 'BLOQUEADO') {
+        await supabase.auth.signOut();
+        throw new Error('Su negocio ha sido bloqueado. Contacte al administrador.');
+      }
+
       setUser(res.usuario);
       setNegocio(res.negocio);
     } catch (err: any) {
