@@ -121,29 +121,29 @@ export const registerTenant = async (req: Request, res: Response<ApiResponse>) =
     }
 
     const now = new Date().toISOString();
-    const newTenantId = `tenant-${Date.now()}`;
 
     const creditosIniciales = tipo_plan === 'enterprise' ? 1000 : tipo_plan === 'pro' ? 300 : 50;
 
-    const { error: negocioError } = await supabaseAdmin
+    const { data: newNegocio, error: negocioError } = await supabaseAdmin
       .from('negocios')
       .insert({
-        id_negocio: newTenantId,
         nombre_comercial,
         logo_url: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=150',
         telefono_whatsapp: telefono_whatsapp || '+573000000000',
         tipo_plan: tipo_plan || 'basico',
         saldo_creditos: creditosIniciales,
-        estado_suscripcion: 'ACTIVO',
+        estado_suscripcion: 'SUSPENDIDO',
         prompt_personalidad: `Eres el asistente virtual con IA de ${nombre_comercial}. Respondes con amabilidad y ayudas a agendar citas.`,
         created_at: now,
         updated_at: now,
-      });
+      })
+      .select()
+      .single();
 
-    if (negocioError) {
+    if (negocioError || !newNegocio) {
       return res.status(500).json({
         success: false,
-        error: 'Error al crear el negocio: ' + negocioError.message,
+        error: 'Error al crear el negocio: ' + negocioError?.message,
       });
     }
 
@@ -151,7 +151,7 @@ export const registerTenant = async (req: Request, res: Response<ApiResponse>) =
       .from('perfiles')
       .insert({
         id_usuario: user.id,
-        id_negocio: newTenantId,
+        id_negocio: newNegocio.id_negocio,
         correo: user.email || correo,
         nombre_completo: nombre_contacto || `Admin ${nombre_comercial}`,
         avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
@@ -171,7 +171,7 @@ export const registerTenant = async (req: Request, res: Response<ApiResponse>) =
     const { data: negocio } = await supabaseAdmin
       .from('negocios')
       .select('*')
-      .eq('id_negocio', newTenantId)
+      .eq('id_negocio', newNegocio.id_negocio)
       .single();
 
     const { data: perfil } = await supabaseAdmin

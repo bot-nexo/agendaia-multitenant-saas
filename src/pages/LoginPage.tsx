@@ -11,9 +11,9 @@ import {
   EyeOff,
   UserCheck,
   PlusCircle,
-  Database,
   CheckCircle2
 } from 'lucide-react';
+import { normalizarWhatsApp, validarPassword } from '../functions/functions';
 
 export const LoginPage: React.FC = () => {
   const { login, registerTenant, demoAccounts, switchDemoAccount } = useAuth();
@@ -28,7 +28,7 @@ export const LoginPage: React.FC = () => {
   const [regNombreContacto, setRegNombreContacto] = useState('');
   const [regTelefono, setRegTelefono] = useState('');
   const [regEmail, setRegEmail] = useState('');
-  const [regPassword, setRegPassword] = useState('');
+  const [regPassword, setRegPassword] = useState('123456');
   const [regPlan, setRegPlan] = useState<'basico' | 'pro' | 'enterprise'>('pro');
 
   const [loading, setLoading] = useState(false);
@@ -68,6 +68,16 @@ export const LoginPage: React.FC = () => {
       return;
     }
 
+    const telefonoNormalizado = normalizarWhatsApp(regTelefono.trim());
+    if (!telefonoNormalizado.valido) {
+      setAuthError(telefonoNormalizado.mensaje);
+      return;
+    }
+    const passwordNormalizado = validarPassword(regPassword.trim());
+    if (!passwordNormalizado.valido) {
+      setAuthError(passwordNormalizado.mensaje);
+      return;
+    }
     setLoading(true);
     setAuthError(null);
     setAuthSuccess(null);
@@ -76,14 +86,15 @@ export const LoginPage: React.FC = () => {
       await registerTenant({
         nombre_comercial: regNombreComercial.trim(),
         nombre_contacto: regNombreContacto.trim(),
-        telefono_whatsapp: regTelefono.trim(),
+        telefono_whatsapp: telefonoNormalizado.numeroNormalizado,
         correo: regEmail.trim(),
-        password: regPassword,
+        password: passwordNormalizado.passNormal,
         tipo_plan: regPlan,
       });
 
       setAuthSuccess('¡Negocio creado e iniciado con éxito!');
     } catch (err: any) {
+      console.log(err);
       setAuthError(err.message || 'Error al registrar el nuevo negocio.');
     } finally {
       setLoading(false);
@@ -265,12 +276,12 @@ export const LoginPage: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Contraseña *
+                  Contraseña * <span className="text-[12px] text-slate-400">(minimo 6 caracteres)</span>
                 </label>
                 <input
                   type="password"
                   required
-                  placeholder="Crea una contraseña segura"
+                  placeholder="Contraseña minimo 6 caracteres"
                   value={regPassword}
                   onChange={(e: any) => setRegPassword(e.target.value)}
                   className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"

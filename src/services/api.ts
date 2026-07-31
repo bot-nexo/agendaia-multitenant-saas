@@ -122,6 +122,25 @@ export const api = {
       const res = await fetch(`${API_BASE}/admin/solicitudes-recarga`, { headers: await getHeaders() });
       return handleResponse<SolicitudRecarga[]>(res);
     },
+    // Pending verification API
+    getNegociosPendientes: async () => {
+      const res = await fetch(`${API_BASE}/pending/negocios-pendientes`, { headers: await getHeaders() });
+      return handleResponse<Negocio[]>(res);
+    },
+    aprobarNegocio: async (id_negocio: string) => {
+      const res = await fetch(`${API_BASE}/pending/negocios/${id_negocio}/aprobar`, {
+        method: 'PATCH',
+        headers: await getHeaders(),
+      });
+      return handleResponse<any>(res);
+    },
+    bloquearNegocio: async (id_negocio: string) => {
+      const res = await fetch(`${API_BASE}/pending/negocios/${id_negocio}/bloquear`, {
+        method: 'PATCH',
+        headers: await getHeaders(),
+      });
+      return handleResponse<any>(res);
+    },
 
     aprobarSolicitudRecarga: async (id_solicitud: string, notas_admin?: string) => {
       const res = await fetch(`${API_BASE}/admin/solicitudes-recarga/${id_solicitud}/aprobar`, {

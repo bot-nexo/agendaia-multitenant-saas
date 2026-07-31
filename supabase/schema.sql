@@ -6,15 +6,20 @@
 -- La tabla "perfiles" extiende los usuarios con metadatos de negocio.
 -- ============================================================
 
+-- 0. Tipos personalizados
+CREATE TYPE rol_usuario AS ENUM ('superadmin', 'admin', 'personal');
+CREATE TYPE tipo_transaccion_credito AS ENUM ('RECARGA_MANUAL', 'CONSUMO_BOT', 'PROMO', 'SUSCRIPCION');
+
 -- 1. Negocios (Tenants)
 CREATE TABLE negocios (
-  id_negocio TEXT PRIMARY KEY,
+  id_negocio UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nombre_comercial TEXT NOT NULL,
   logo_url TEXT,
-  telefono_whatsapp TEXT NOT NULL,
+  telefono_whatsapp TEXT UNIQUE NOT NULL,
   tipo_plan TEXT NOT NULL DEFAULT 'basico' CHECK (tipo_plan IN ('basico', 'pro', 'enterprise')),
-  saldo_creditos INTEGER NOT NULL DEFAULT 0,
+  saldo_creditos INTEGER NOT NULL DEFAULT 0 CHECK (saldo_creditos >= 0),
   estado_suscripcion TEXT NOT NULL DEFAULT 'ACTIVO' CHECK (estado_suscripcion IN ('ACTIVO', 'VENCIDO_GRACIA', 'SUSPENDIDO')),
+  estado_verificacion TEXT NOT NULL DEFAULT 'PENDIENTE' CHECK (estado_verificacion IN ('PENDIENTE', 'APROBADO', 'BLOQUEADO')),
   prompt_personalidad TEXT NOT NULL DEFAULT 'Eres un asistente cordial y eficiente que agenda citas para nuestro negocio.',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -23,11 +28,11 @@ CREATE TABLE negocios (
 -- 2. Perfiles (extiende auth.users de Supabase Auth)
 CREATE TABLE perfiles (
   id_usuario UUID PRIMARY KEY REFERENCES auth.users NOT NULL,
-  id_negocio TEXT REFERENCES negocios(id_negocio) ON DELETE SET NULL,
+  id_negocio UUID REFERENCES negocios(id_negocio) ON DELETE SET NULL,
   correo TEXT,
   nombre_completo TEXT NOT NULL,
   avatar_url TEXT,
-  rol TEXT NOT NULL DEFAULT 'admin' CHECK (rol IN ('superadmin', 'admin', 'personal')),
+  rol rol_usuario NOT NULL DEFAULT 'personal',
   es_superadmin BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -35,20 +40,20 @@ CREATE TABLE perfiles (
 
 -- 3. Transacciones de Crédito
 CREATE TABLE transacciones_credito (
-  id_transaccion TEXT PRIMARY KEY,
-  id_negocio TEXT REFERENCES negocios(id_negocio) NOT NULL,
+  id_transaccion UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id_negocio UUID NOT NULL REFERENCES negocios(id_negocio),
   monto INTEGER NOT NULL,
-  tipo TEXT NOT NULL CHECK (tipo IN ('RECARGA_MANUAL', 'CONSUMO_BOT', 'PROMO', 'SUSCRIPCION')),
+  tipo tipo_transaccion_credito NOT NULL,
   descripcion TEXT,
   id_referencia TEXT,
-  creado_por TEXT,
+  creado_por UUID REFERENCES auth.users(id),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 4. Empleados (v2 - vacío en v1)
 CREATE TABLE empleados (
-  id_empleado TEXT PRIMARY KEY,
-  id_negocio TEXT REFERENCES negocios(id_negocio) NOT NULL,
+  id_empleado UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id_negocio UUID NOT NULL REFERENCES negocios(id_negocio),
   nombre TEXT NOT NULL,
   activo BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -57,20 +62,20 @@ CREATE TABLE empleados (
 
 -- 5. Servicios
 CREATE TABLE servicios (
-  id_servicio TEXT PRIMARY KEY,
-  id_negocio TEXT REFERENCES negocios(id_negocio) NOT NULL,
+  id_servicio UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id_negocio UUID NOT NULL REFERENCES negocios(id_negocio),
   nombre TEXT NOT NULL,
-  duracion_minutos INTEGER NOT NULL,
-  precio NUMERIC(10,2) NOT NULL,
-  id_empleado TEXT REFERENCES empleados(id_empleado),
+  duracion_minutos INTEGER NOT NULL CHECK (duracion_minutos > 0),
+  precio NUMERIC(10,2) NOT NULL CHECK (precio >= 0),
+  id_empleado UUID REFERENCES empleados(id_empleado),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 6. Clientes
 CREATE TABLE clientes (
-  id_cliente TEXT PRIMARY KEY,
-  id_negocio TEXT REFERENCES negocios(id_negocio) NOT NULL,
+  id_cliente UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id_negocio UUID NOT NULL REFERENCES negocios(id_negocio),
   nombre TEXT NOT NULL,
   telefono TEXT NOT NULL,
   ultima_visita DATE,
@@ -81,11 +86,11 @@ CREATE TABLE clientes (
 
 -- 7. Citas
 CREATE TABLE citas (
-  id_cita TEXT PRIMARY KEY,
-  id_negocio TEXT REFERENCES negocios(id_negocio) NOT NULL,
-  id_cliente TEXT REFERENCES clientes(id_cliente) NOT NULL,
-  id_servicio TEXT REFERENCES servicios(id_servicio),
-  id_empleado TEXT,
+  id_cita UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id_negocio UUID NOT NULL REFERENCES negocios(id_negocio),
+  id_cliente UUID NOT NULL REFERENCES clientes(id_cliente),
+  id_servicio UUID REFERENCES servicios(id_servicio),
+  id_empleado UUID,
   fecha_hora_inicio TIMESTAMPTZ NOT NULL,
   fecha_hora_fin TIMESTAMPTZ NOT NULL,
   estado TEXT NOT NULL DEFAULT 'confirmado' CHECK (estado IN ('confirmado', 'pendiente', 'en_proceso', 'completado', 'cancelado')),
@@ -97,9 +102,9 @@ CREATE TABLE citas (
 
 -- 8. Chats
 CREATE TABLE chats (
-  id_chat TEXT PRIMARY KEY,
-  id_negocio TEXT REFERENCES negocios(id_negocio) NOT NULL,
-  id_cliente TEXT REFERENCES clientes(id_cliente) NOT NULL,
+  id_chat UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id_negocio UUID NOT NULL REFERENCES negocios(id_negocio),
+  id_cliente UUID NOT NULL REFERENCES clientes(id_cliente),
   bot_activo BOOLEAN NOT NULL DEFAULT TRUE,
   mensajes_no_leidos INTEGER NOT NULL DEFAULT 0,
   ultimo_mensaje TEXT,
@@ -109,9 +114,9 @@ CREATE TABLE chats (
 
 -- 9. Mensajes
 CREATE TABLE mensajes (
-  id_mensaje TEXT PRIMARY KEY,
-  id_negocio TEXT REFERENCES negocios(id_negocio) NOT NULL,
-  id_chat TEXT REFERENCES chats(id_chat) NOT NULL,
+  id_mensaje UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id_negocio UUID NOT NULL REFERENCES negocios(id_negocio),
+  id_chat UUID NOT NULL REFERENCES chats(id_chat),
   tipo_remitente TEXT NOT NULL DEFAULT 'cliente' CHECK (tipo_remitente IN ('cliente', 'bot', 'agente')),
   contenido TEXT NOT NULL,
   estado TEXT NOT NULL DEFAULT 'enviado' CHECK (estado IN ('enviado', 'entregado', 'leido')),
@@ -120,8 +125,8 @@ CREATE TABLE mensajes (
 
 -- 10. Lista Blanca Bot
 CREATE TABLE lista_blanca_bot (
-  id_lista_blanca TEXT PRIMARY KEY,
-  id_negocio TEXT REFERENCES negocios(id_negocio) NOT NULL,
+  id_lista_blanca UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id_negocio UUID NOT NULL REFERENCES negocios(id_negocio),
   nombre TEXT NOT NULL,
   telefono TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
@@ -130,9 +135,9 @@ CREATE TABLE lista_blanca_bot (
 -- 11. Solicitudes de Recarga
 CREATE TABLE solicitudes_recarga (
   id_solicitud TEXT PRIMARY KEY,
-  id_negocio TEXT REFERENCES negocios(id_negocio) NOT NULL,
+  id_negocio UUID NOT NULL REFERENCES negocios(id_negocio),
   negocio_nombre TEXT,
-  id_usuario_solicitante TEXT REFERENCES perfiles(id_usuario),
+  id_usuario_solicitante UUID REFERENCES perfiles(id_usuario),
   nombre_solicitante TEXT,
   correo_solicitante TEXT,
   paquete_creditos INTEGER NOT NULL,
@@ -145,6 +150,17 @@ CREATE TABLE solicitudes_recarga (
   estado TEXT NOT NULL DEFAULT 'PENDIENTE' CHECK (estado IN ('PENDIENTE', 'APROBADO', 'RECHAZADO')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 12. Referencias de Pago (Manual)
+CREATE TABLE referencias_pago (
+  id_referencia TEXT PRIMARY KEY,
+  id_negocio UUID NOT NULL REFERENCES negocios(id_negocio) ON DELETE CASCADE,
+  referencia TEXT NOT NULL,
+  fecha_pago DATE NOT NULL,
+  nombre_pagador TEXT NOT NULL,
+  cedula_pagador TEXT NOT NULL,
+  creado_en TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Índices para rendimiento
@@ -166,12 +182,12 @@ CREATE INDEX idx_perfiles_id_negocio ON perfiles(id_negocio);
 -- Las contraseñas deben configurarse en Supabase Auth, no en la DB.
 -- ============================================================
 
-INSERT INTO negocios (id_negocio, nombre_comercial, logo_url, telefono_whatsapp, tipo_plan, saldo_creditos, estado_suscripcion, prompt_personalidad, created_at, updated_at) VALUES
-('11111111-1111-1111-1111-111111111111', 'Barbería Deluxe VIP', 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=150', '+573001234567', 'pro', 250, 'ACTIVO', 'Eres un barbero experto y cordial. Ayudas a los clientes a elegir cortes modernos, arreglos de barba y a agendar citas rápidamente.', '2026-01-10T08:00:00.000Z', NOW()),
-('22222222-2222-2222-2222-222222222222', 'Clínica Dental Spa', 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=150', '+573109876543', 'enterprise', 1200, 'ACTIVO', 'Eres el asistente médico virtual de Clínica Dental Spa. Tu tono es empático, profesional y enfocado en la salud oral de nuestros pacientes.', '2026-02-01T10:00:00.000Z', NOW()),
-('33333333-3333-3333-3333-333333333333', 'Estética & Spa Bella', 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=150', '+573205558899', 'basico', 15, 'VENCIDO_GRACIA', 'Eres un asistente relajante y acogedor de Estética Bella. Respondes con calidez sobre masajes, limpiezas faciales y manicura.', '2026-03-15T12:00:00.000Z', NOW());
+INSERT INTO negocios (id_negocio, nombre_comercial, logo_url, telefono_whatsapp, tipo_plan, saldo_creditos, estado_suscripcion, estado_verificacion, prompt_personalidad, created_at, updated_at) VALUES
+('11111111-1111-1111-1111-111111111111', 'Barbería Deluxe VIP', 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=150', '+573001234567', 'pro', 250, 'ACTIVO', 'APROBADO', 'Eres un barbero experto y cordial. Ayudas a los clientes a elegir cortes modernos, arreglos de barba y a agendar citas rápidamente.', '2026-01-10T08:00:00.000Z', NOW()),
+('22222222-2222-2222-2222-222222222222', 'Clínica Dental Spa', 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=150', '+573109876543', 'enterprise', 1200, 'ACTIVO', 'APROBADO', 'Eres el asistente médico virtual de Clínica Dental Spa. Tu tono es empático, profesional y enfocado en la salud oral de nuestros pacientes.', '2026-02-01T10:00:00.000Z', NOW()),
+('33333333-3333-3333-3333-333333333333', 'Estética & Spa Bella', 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=150', '+573205558899', 'basico', 15, 'VENCIDO_GRACIA', 'APROBADO', 'Eres un asistente relajante y acogedor de Estética Bella. Respondes con calidez sobre masajes, limpiezas faciales y manicura.', '2026-03-15T12:00:00.000Z', NOW());
 
 -- Los perfiles deben insertarse después de crear los usuarios en Supabase Auth.
 -- Ejemplo:
--- INSERT INTO perfiles (id_usuario, id_negocio, nombre_completo, avatar_url, rol, es_superadmin) VALUES
--- ('<UUID_DEL_USUARIO_SUPABASE>', '11111111-1111-1111-1111-111111111111', 'Mateo Morales (Admin Barbería)', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', 'admin', FALSE);
+-- INSERT INTO perfiles (id_usuario, id_negocio, correo, nombre_completo, avatar_url, rol, es_superadmin) VALUES
+-- ('<UUID_DEL_USUARIO_SUPABASE>', '11111111-1111-1111-1111-111111111111', 'mateo@barberia.com', 'Mateo Morales (Admin Barbería)', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150', 'admin', FALSE);

@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { supabaseAdmin } from '../lib/supabase';
 import { ApiResponse, Negocio, TransaccionCredito, Perfil, SolicitudRecarga } from '../types';
 
+const uuid = () => crypto.randomUUID();
+
 export const getAllNegocios = async (_req: Request, res: Response<ApiResponse>) => {
   try {
     const { data: negocios, error } = await supabaseAdmin
@@ -77,49 +79,68 @@ export const createNegocio = async (req: Request, res: Response<ApiResponse>) =>
     }
 
     const now = new Date().toISOString();
-    const newNegocioId = 'neg-' + Date.now();
 
-    const nuevoNegocio: Negocio = {
-      id_negocio: newNegocioId,
-      nombre_comercial,
-      logo_url: req.body.logo_url || 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=150',
-      telefono_whatsapp,
-      tipo_plan: tipo_plan || 'basico',
-      saldo_creditos: Number(saldo_inicial) || 100,
-      estado_suscripcion: 'ACTIVO',
-      prompt_personalidad: prompt_personalidad || 'Eres un asistente cordial y eficiente que agenda citas para nuestro negocio.',
-      created_at: now,
-      updated_at: now,
-    };
+    const { data: newNegocio, error: negocioError } = await supabaseAdmin
+      .from('negocios')
+      .insert({
+        nombre_comercial,
+        logo_url: req.body.logo_url || 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=150',
+        telefono_whatsapp,
+        tipo_plan: tipo_plan || 'basico',
+        saldo_creditos: Number(saldo_inicial) || 100,
+        estado_suscripcion: 'ACTIVO',
+        prompt_personalidad: prompt_personalidad || 'Eres un asistente cordial y eficiente que agenda citas para nuestro negocio.',
+        created_at: now,
+        updated_at: now,
+      })
+      .select()
+      .single();
 
-    const { error: negocioError } = await supabaseAdmin.from('negocios').insert(nuevoNegocio);
-
-    if (negocioError) {
-      return res.status(500).json({ success: false, error: negocioError.message });
+    if (negocioError || !newNegocio) {
+      return res.status(500).json({ success: false, error: negocioError?.message });
     }
 
-    const nuevoPerfil: Perfil = {
-      id_usuario: 'usr-' + Date.now(),
-      id_negocio: newNegocioId,
-      correo: correo_admin,
-      nombre_completo: nombre_admin || `Admin ${nombre_comercial}`,
-      avatar_url: null,
-      rol: 'admin',
-      es_superadmin: false,
-      created_at: now,
-      updated_at: now,
-    };
+    const randomPassword = crypto.randomUUID().slice(0, 12);
 
-    const { error: perfilError } = await supabaseAdmin.from('perfiles').insert(nuevoPerfil);
+    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: correo_admin,
+      password: randomPassword,
+      email_confirm: true,
+      user_metadata: {
+        nombre_completo: nombre_admin || `Admin ${nombre_comercial}`,
+        nombre_comercial,
+      },
+    });
+
+    if (authError || !authUser) {
+      return res.status(500).json({
+        success: false,
+        error: 'Error al crear usuario en Supabase Auth: ' + authError?.message,
+      });
+    }
+
+    const { error: perfilError } = await supabaseAdmin
+      .from('perfiles')
+      .insert({
+        id_usuario: authUser.id,
+        id_negocio: newNegocio.id_negocio,
+        correo: correo_admin,
+        nombre_completo: nombre_admin || `Admin ${nombre_comercial}`,
+        avatar_url: null,
+        rol: 'admin',
+        es_superadmin: false,
+        created_at: now,
+        updated_at: now,
+      });
 
     if (perfilError) {
       return res.status(500).json({ success: false, error: perfilError.message });
     }
 
     const nuevaTransaccion: TransaccionCredito = {
-      id_transaccion: 'tc-' + Date.now(),
-      id_negocio: newNegocioId,
-      monto: nuevoNegocio.saldo_creditos,
+      id_transaccion: uuid(),
+      id_negocio: newNegocio.id_negocio,
+      monto: Number(saldo_inicial) || 100,
       tipo: 'RECARGA_MANUAL',
       descripcion: 'Asignación inicial de créditos por creación de cuenta',
       id_referencia: 'INIT-CREATION',
@@ -129,9 +150,21 @@ export const createNegocio = async (req: Request, res: Response<ApiResponse>) =>
 
     await supabaseAdmin.from('transacciones_credito').insert(nuevaTransaccion);
 
+    const { data: negocioFinal } = await supabaseAdmin
+      .from('negocios')
+      .select('*')
+      .eq('id_negocio', newNegocio.id_negocio)
+      .single();
+
+    const { data: perfilFinal } = await supabaseAdmin
+      .from('perfiles')
+      .select('*')
+      .eq('id_usuario', authUser.id)
+      .single();
+
     return res.status(201).json({
       success: true,
-      data: { negocio: nuevoNegocio, perfil: nuevoPerfil },
+      data: { negocio: negocioFinal, perfil: perfilFinal, password_temporal: randomPassword },
       message: 'Negocio y usuario administrador creados exitosamente.',
     });
   } catch (err: any) {
@@ -218,7 +251,7 @@ export const adjustCreditosNegocio = async (req: Request, res: Response<ApiRespo
     }
 
     const transaccion: TransaccionCredito = {
-      id_transaccion: 'tc-' + Date.now(),
+      id_transaccion: uuid(),
       id_negocio,
       monto: montoNum,
       tipo: tipo || 'RECARGA_MANUAL',
@@ -413,6 +446,8 @@ export const aprobarSolicitudRecargaAdmin = async (req: Request, res: Response<A
       .from('negocios')
       .update({
         saldo_creditos: negocio.saldo_creditos + solicitud.paquete_creditos,
+        estado_suscripcion: 'ACTIVO',
+        estado_verificacion: 'APROBADO',
         updated_at: now,
       })
       .eq('id_negocio', solicitud.id_negocio);
@@ -429,7 +464,7 @@ export const aprobarSolicitudRecargaAdmin = async (req: Request, res: Response<A
       .eq('id_solicitud', id_solicitud);
 
     const transaccion: TransaccionCredito = {
-      id_transaccion: 'tc-' + Date.now(),
+      id_transaccion: uuid(),
       id_negocio: solicitud.id_negocio,
       monto: solicitud.paquete_creditos,
       tipo: 'RECARGA_MANUAL',

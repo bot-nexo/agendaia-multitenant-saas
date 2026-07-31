@@ -4,6 +4,8 @@ import path from 'path';
 import adminRoutes from './server/routes/admin.routes';
 import authRoutes from './server/routes/auth.routes';
 import tenantRoutes from './server/routes/tenant.routes';
+import pendingRoutes from './server/routes/pending.routes';
+import paymentsRoutes from './server/routes/payments.routes';
 
 async function startServer() {
   const app = express();
@@ -27,6 +29,9 @@ async function startServer() {
   app.use('/api/v1/auth', authRoutes);
   app.use('/api/v1/admin', adminRoutes);
   app.use('/api/v1/tenant', tenantRoutes);
+  // New routes
+  app.use('/api/v1/pending', pendingRoutes);
+  app.use('/api/v1/payments', paymentsRoutes);
 
   // Health check endpoint
   app.get('/api/health', (_req, res) => {

@@ -13,6 +13,8 @@ import {
   SolicitudRecarga
 } from '../types';
 
+const uuid = () => crypto.randomUUID();
+
 const getGeminiClient = () => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
@@ -179,7 +181,7 @@ export const createCita = async (req: Request, res: Response<ApiResponse>) => {
     const endDate = new Date(startDate.getTime() + duracion * 60000);
 
     const nuevaCita: Cita = {
-      id_cita: 'cita-' + Date.now(),
+      id_cita: uuid(),
       id_negocio,
       id_cliente,
       id_servicio: id_servicio || null,
@@ -320,7 +322,7 @@ export const createServicio = async (req: Request, res: Response<ApiResponse>) =
     }
 
     const nuevoServicio: Servicio = {
-      id_servicio: 'srv-' + Date.now(),
+      id_servicio: uuid(),
       id_negocio,
       nombre,
       duracion_minutos: Number(duracion_minutos),
@@ -411,7 +413,7 @@ export const createCliente = async (req: Request, res: Response<ApiResponse>) =>
 
     const now = new Date().toISOString();
     const nuevoCliente: Cliente = {
-      id_cliente: 'cli-' + Date.now(),
+      id_cliente: uuid(),
       id_negocio,
       nombre,
       telefono,
@@ -428,7 +430,7 @@ export const createCliente = async (req: Request, res: Response<ApiResponse>) =>
     }
 
     const nuevoChat: Chat = {
-      id_chat: 'chat-' + Date.now(),
+      id_chat: uuid(),
       id_negocio,
       id_cliente: nuevoCliente.id_cliente,
       bot_activo: true,
@@ -592,7 +594,7 @@ export const sendMensajeAgent = async (req: Request, res: Response<ApiResponse>)
 
     const senderType = tipo_remitente || 'agente';
     const nuevoMensaje: Mensaje = {
-      id_mensaje: 'msg-' + Date.now(),
+      id_mensaje: uuid(),
       id_negocio,
       id_chat,
       tipo_remitente: senderType,
@@ -677,7 +679,7 @@ export const triggerAiBotReply = async (req: Request, res: Response<ApiResponse>
 
     if (prompt_usuario) {
       const msgUsuario: Mensaje = {
-        id_mensaje: 'msg-' + Date.now(),
+        id_mensaje: uuid(),
         id_negocio,
         id_chat,
         tipo_remitente: 'cliente',
@@ -739,7 +741,7 @@ ${historial}
 
     const now = new Date().toISOString();
     const msgBot: Mensaje = {
-      id_mensaje: 'msg-' + (Date.now() + 1),
+      id_mensaje: uuid(),
       id_negocio,
       id_chat,
       tipo_remitente: 'bot',
@@ -765,7 +767,7 @@ ${historial}
       .eq('id_negocio', id_negocio);
 
     const transaccion: TransaccionCredito = {
-      id_transaccion: 'tc-' + Date.now(),
+      id_transaccion: uuid(),
       id_negocio,
       monto: -1,
       tipo: 'CONSUMO_BOT',
@@ -859,7 +861,7 @@ export const createListaBlancaItem = async (req: Request, res: Response<ApiRespo
     }
 
     const nuevoItem: ListaBlancaBot = {
-      id_lista_blanca: 'lb-' + Date.now(),
+      id_lista_blanca: uuid(),
       id_negocio,
       nombre,
       telefono,

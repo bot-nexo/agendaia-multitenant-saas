@@ -4,10 +4,11 @@ import { Navbar } from './components/Navbar';
 import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
 import { TenantDashboard } from './pages/TenantDashboard';
 import { LoginPage } from './pages/LoginPage';
-import { ShieldAlert, Building2, Loader2 } from 'lucide-react';
+import { RegistrationComplete } from './components/RegistrationComplete';
+import { ShieldAlert, Loader2 } from 'lucide-react';
 
 function AppContent() {
-  const { user, loading, error } = useAuth();
+  const { user, negocio, loading, error } = useAuth();
 
   if (loading) {
     return (
@@ -38,6 +39,10 @@ function AppContent() {
 
   if (!user) {
     return <LoginPage />;
+  }
+
+  if (negocio?.estado_suscripcion === 'SUSPENDIDO' && !user.es_superadmin) {
+    return <RegistrationComplete />;
   }
 
   return (

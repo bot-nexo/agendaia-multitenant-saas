@@ -37,7 +37,7 @@ export const SuperAdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'negocios' | 'solicitudes' | 'transacciones' | 'analitica'>('negocios');
+  const [activeTab, setActiveTab] = useState<'negocios' | 'solicitudes' | 'transacciones' | 'analitica' | 'pendientes'>('negocios');
   const [selectedComprobanteUrl, setSelectedComprobanteUrl] = useState<string | null>(null);
 
   // Modal States
@@ -45,6 +45,7 @@ export const SuperAdminDashboard: React.FC = () => {
   const [creditModalOpen, setCreditModalOpen] = useState(false);
   const [subModalOpen, setSubModalOpen] = useState(false);
   const [selectedNegocio, setSelectedNegocio] = useState<Negocio | null>(null);
+  const [negociosPendientes, setNegociosPendientes] = useState<Negocio[]>([]);
 
   // Form States
   const [newNegocio, setNewNegocio] = useState({
@@ -89,6 +90,23 @@ export const SuperAdminDashboard: React.FC = () => {
     }
   };
 
+  // Load pending verification businesses
+  const loadPendingNegocios = async () => {
+    try {
+      const data = await api.admin.getNegociosPendientes();
+      setNegociosPendientes(data);
+    } catch (err: any) {
+      console.error('Error loading pending negocios', err);
+    }
+  }
+
+  // Load pending negocios when 'pendientes' tab is active
+  React.useEffect(() => {
+    if (activeTab === 'pendientes') {
+      loadPendingNegocios();
+    }
+  }, [activeTab]);;
+
   const handleAprobarSolicitud = async (id_solicitud: string) => {
     try {
       await api.admin.aprobarSolicitudRecarga(id_solicitud);
@@ -108,6 +126,28 @@ export const SuperAdminDashboard: React.FC = () => {
       await loadAdminData();
     } catch (err: any) {
       alert('Error al rechazar recarga: ' + err.message);
+    }
+  };
+
+  const handleAprobarNegocio = async (id_negocio: string) => {
+    try {
+      await api.admin.aprobarNegocio(id_negocio);
+      alert('Negocio aprobado.');
+      await loadPendingNegocios();
+      await loadAdminData();
+    } catch (err: any) {
+      alert('Error al aprobar negocio: ' + err.message);
+    }
+  };
+
+  const handleBloquearNegocio = async (id_negocio: string) => {
+    try {
+      await api.admin.bloquearNegocio(id_negocio);
+      alert('Negocio bloqueado.');
+      await loadPendingNegocios();
+      await loadAdminData();
+    } catch (err: any) {
+      alert('Error al bloquear negocio: ' + err.message);
     }
   };
 
@@ -313,6 +353,17 @@ export const SuperAdminDashboard: React.FC = () => {
           <BarChart3 className="w-4 h-4" />
           <span>Ingresos & Analítica Plataforma</span>
         </button>
+          <button
+            onClick={() => setActiveTab('pendientes')}
+            className={`pb-3 border-b-2 flex items-center space-x-2 transition ${
+              activeTab === 'pendientes'
+                ? 'border-indigo-600 text-indigo-600 font-semibold'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Clock className="w-4 h-4" />
+            <span>Pendientes</span>
+          </button>
       </div>
 
       {/* Tab Content: Directores de Negocios */}
@@ -430,6 +481,128 @@ export const SuperAdminDashboard: React.FC = () => {
         </div>
       )}
 
+      {/* Tab Content: Negocios Pendientes de Verificación */}
+      {activeTab === 'pendientes' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs">
+            <h3 className="text-base font-semibold text-slate-900">Negocios Pendientes de Verificación</h3>
+            <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold">
+              {negociosPendientes.length} Pendientes
+            </span>
+          </div>
+          {negociosPendientes.length === 0 ? (
+            <div className="bg-white rounded-xl border border-slate-200 p-12 text-center space-y-3">
+              <p className="font-semibold text-slate-700">No hay negocios pendientes de verificación.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-slate-700">
+                <thead className="bg-slate-50 text-slate-500 uppercase text-[11px] tracking-wider font-semibold border-b border-slate-200">
+                  <tr>
+                    <th className="px-6 py-4">Negocio</th>
+                    <th className="px-6 py-4">Administrador</th>
+                    <th className="px-6 py-4">Plan</th>
+                    <th className="px-6 py-4">Créditos</th>
+                    <th className="px-6 py-4">Estado</th>
+                    <th className="px-6 py-4 text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {negociosPendientes.map((n) => (
+                    <tr key={n.id_negocio} className="hover:bg-slate-50/80 transition">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center space-x-3">
+                          <img src={n.logo_url || 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=150'} alt={n.nombre_comercial} className="w-10 h-10 rounded-lg object-cover border border-slate-200" />
+                          <div>
+                            <p className="font-semibold text-slate-900">{n.nombre_comercial}</p>
+                            <p className="text-xs text-slate-500">{n.telefono_whatsapp}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-slate-800 font-medium">{n.admin_nombre}</p>
+                        <p className="text-xs text-slate-500">{n.admin_correo}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="uppercase text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200/60">{n.tipo_plan}</span>
+                      </td>
+                      <td className="px-6 py-4 font-bold text-amber-700">{n.saldo_creditos} crd</td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200/60">Pendiente</span>
+                      </td>
+                      <td className="px-6 py-4 text-right space-x-2">
+                        <button onClick={() => handleAprobarNegocio(n.id_negocio)} className="px-2.5 py-1.5 bg-emerald-600 text-white rounded text-xs hover:bg-emerald-700 transition">Aprobar</button>
+                        <button onClick={() => handleBloquearNegocio(n.id_negocio)} className="px-2.5 py-1.5 bg-rose-600 text-white rounded text-xs hover:bg-rose-700 transition">Bloquear</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+      {/* Tab Content: Negocios Pendientes de Verificación */}
+      {activeTab === 'pendientes' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs">
+            <h3 className="text-base font-semibold text-slate-900">Negocios Pendientes de Verificación</h3>
+            <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold">
+              {negociosPendientes.length} Pendientes
+            </span>
+          </div>
+          {negociosPendientes.length === 0 ? (
+            <div className="bg-white rounded-xl border border-slate-200 p-12 text-center space-y-3">
+              <p className="font-semibold text-slate-700">No hay negocios pendientes de verificación.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-slate-700">
+                <thead className="bg-slate-50 text-slate-500 uppercase text-[11px] tracking-wider font-semibold border-b border-slate-200">
+                  <tr>
+                    <th className="px-6 py-4">Negocio</th>
+                    <th className="px-6 py-4">Administrador</th>
+                    <th className="px-6 py-4">Plan</th>
+                    <th className="px-6 py-4">Créditos</th>
+                    <th className="px-6 py-4">Estado</th>
+                    <th className="px-6 py-4 text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {negociosPendientes.map((n) => (
+                    <tr key={n.id_negocio} className="hover:bg-slate-50/80 transition">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center space-x-3">
+                          <img src={n.logo_url || 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=150'} alt={n.nombre_comercial} className="w-10 h-10 rounded-lg object-cover border border-slate-200" />
+                          <div>
+                            <p className="font-semibold text-slate-900">{n.nombre_comercial}</p>
+                            <p className="text-xs text-slate-500">{n.telefono_whatsapp}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-slate-800 font-medium">{n.admin_nombre}</p>
+                        <p className="text-xs text-slate-500">{n.admin_correo}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="uppercase text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200/60">{n.tipo_plan}</span>
+                      </td>
+                      <td className="px-6 py-4 font-bold text-amber-700">{n.saldo_creditos} crd</td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200/60">Pendiente</span>
+                      </td>
+                      <td className="px-6 py-4 text-right space-x-2">
+                        <button onClick={() => handleAprobarNegocio(n.id_negocio)} className="px-2.5 py-1.5 bg-emerald-600 text-white rounded text-xs hover:bg-emerald-700 transition">Aprobar</button>
+                        <button onClick={() => handleBloquearNegocio(n.id_negocio)} className="px-2.5 py-1.5 bg-rose-600 text-white rounded text-xs hover:bg-rose-700 transition">Bloquear</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
       {/* Tab Content: Solicitudes de Recarga (Approval Panel) */}
       {activeTab === 'solicitudes' && (
         <div className="space-y-4">
