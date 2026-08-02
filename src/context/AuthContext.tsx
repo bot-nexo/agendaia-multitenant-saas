@@ -143,6 +143,83 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  interface RegisterParams {
+  nombre_comercial: string;
+  nombre_contacto: string;
+  telefono_whatsapp: string;
+  correo: string;
+  password: string;
+  tipo_plan: string;
+}
+
+const registerTenant = async (data: {
+  nombre_comercial: string;
+  correo: string;
+  password: string;
+  tipo_plan?: string;
+  telefono_whatsapp?: string;
+  nombre_contacto?: string;
+}) => {
+  setError(null);
+  setLoading(true);
+  isRegistering.current = true;
+
+  try {
+    const nombreContactoFinal = data.nombre_contacto || `Admin ${data.nombre_comercial}`;
+    const tipoPlanFinal = data.tipo_plan || 'basico';
+
+    // 1. Crear el usuario enviando los datos necesarios para el Trigger
+    const { data: authData, error: signUpError } = await supabase.auth.signUp({
+      email: data.correo,
+      password: data.password,
+      options: {
+        data: {
+          nombre_contacto: nombreContactoFinal,
+          nombre_comercial: data.nombre_comercial,
+          tipo_plan: tipoPlanFinal,
+          telefono_whatsapp: data.telefono_whatsapp || null,
+        },
+      },
+    });
+
+    if (signUpError) throw new Error(signUpError.message);
+    if (!authData.user) throw new Error('No se pudo completar el registro.');
+
+    // 2. Construir la estructura directamente desde los metadatos
+    // Esto evita lecturas directas a la BD propensas a bloqueos por RLS o race conditions
+    const datosNegocioPendiente = {
+      usuario: {
+        id_usuario: authData.user.id,
+        correo: authData.user.email,
+        nombre_completo: nombreContactoFinal,
+        rol: 'admin',
+      },
+      negocio: {
+        nombre_comercial: data.nombre_comercial,
+        telefono_whatsapp: data.telefono_whatsapp || null,
+        tipo_plan: tipoPlanFinal,
+        estado_verificacion: 'pendiente',
+      },
+      tipo_plan: tipoPlanFinal,
+    };
+
+    // 3. Pasar los datos estructurados al Modal de Pago
+    setPendingPaymentData(datosNegocioPendiente);
+
+    // 4. Determinar si requiere flujo de pago o solo confirmación de espera
+    if (tipoPlanFinal !== 'basico' && tipoPlanFinal !== 'free') {
+      setShowPaymentModal(true);
+    } 
+
+  } catch (err: any) {
+    console.error('Error al registrar tenant:', err);
+    setError(err.message || 'Error al registrar el negocio');
+    throw err;
+  } finally {
+    isRegistering.current = false;
+    setLoading(false);
+  }
+};
 
   // const registerTenant = async (data: {
   //   nombre_comercial: string;
@@ -157,7 +234,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   //   isRegistering.current = true;
 
   //   try {
-  //     1. Un solo registro en Supabase Auth pasando TODOS los datos requeridos
+  //     // 1. Crear el usuario en Supabase
   //     const { data: authData, error: signUpError } = await supabase.auth.signUp({
   //       email: data.correo,
   //       password: data.password,
@@ -171,30 +248,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   //       },
   //     });
 
-  //     if (signUpError) {
-  //       console.error('Error en Supabase Auth:', signUpError);
-  //       throw new Error(signUpError.message);
-  //     }
+  //     if (signUpError) throw new Error(signUpError.message);
+  //     if (!authData.user) throw new Error('No se pudo completar el registro.');
 
-  //     if (!authData.user) {
-  //       throw new Error('No se pudo completar el registro.');
-  //     }
-
-  //     2. Obtener el perfil y el negocio creados automáticamente por el trigger
+  //     // 2. Obtener el perfil y negocio recién creados por el trigger de SQL
   //     const { data: perfil, error: perfilError } = await supabase
   //       .from('perfiles')
   //       .select('*, negocios(*)')
   //       .eq('id_usuario', authData.user.id)
   //       .single();
+  //     console.log(data, "perfil", perfil);
+  //     if (perfilError) throw new Error('Error al obtener datos del registro.');
 
-  //     if (perfilError) {
-  //       console.error('Error al obtener perfil:', perfilError);
-  //       throw new Error('El usuario se creó pero hubo un problema al obtener su perfil.');
-  //     }
+  //     // 3. CERRAR SESIÓN INMEDIATAMENTE
+  //     // Supabase por defecto loguea al usuario tras el signUp. Esto revoca el token local.
+  //     // await supabase.auth.signOut();
 
-  //     3. Actualizar el estado global de tu aplicación
-  //     setUser(perfil);
-  //     setNegocio(perfil.negocios);
+  //     // 4. No guardamos el usuario en el contexto de autenticación global (setUser)
+  //     // En su lugar, guardas los datos necesarios para el Modal de Pago
+  //     setPendingPaymentData({
+  //       usuario: perfil,
+  //       negocio: perfil.negocios,
+  //       tipo_plan: data.tipo_plan,
+  //     });
+
+  //     // 5. Abrir el modal de pago
+  //     setShowPaymentModal(true);
 
   //   } catch (err: any) {
   //     console.error(err);
@@ -205,70 +284,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   //     setLoading(false);
   //   }
   // };
-
-  const registerTenant = async (data: {
-    nombre_comercial: string;
-    correo: string;
-    password: string;
-    tipo_plan?: string;
-    telefono_whatsapp?: string;
-    nombre_contacto?: string;
-  }) => {
-    setError(null);
-    setLoading(true);
-    isRegistering.current = true;
-
-    try {
-      // 1. Crear el usuario en Supabase
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: data.correo,
-        password: data.password,
-        options: {
-          data: {
-            nombre_completo: data.nombre_contacto || `Admin ${data.nombre_comercial}`,
-            nombre_comercial: data.nombre_comercial,
-            tipo_plan: data.tipo_plan || 'free',
-            telefono_whatsapp: data.telefono_whatsapp || null,
-          },
-        },
-      });
-
-      if (signUpError) throw new Error(signUpError.message);
-      if (!authData.user) throw new Error('No se pudo completar el registro.');
-
-      // 2. Obtener el perfil y negocio recién creados por el trigger de SQL
-      const { data: perfil, error: perfilError } = await supabase
-        .from('perfiles')
-        .select('*, negocios(*)')
-        .eq('id_usuario', authData.user.id)
-        .single();
-      console.log(data, "perfil", perfil);
-      if (perfilError) throw new Error('Error al obtener datos del registro.');
-
-      // 3. CERRAR SESIÓN INMEDIATAMENTE
-      // Supabase por defecto loguea al usuario tras el signUp. Esto revoca el token local.
-      // await supabase.auth.signOut();
-
-      // 4. No guardamos el usuario en el contexto de autenticación global (setUser)
-      // En su lugar, guardas los datos necesarios para el Modal de Pago
-      setPendingPaymentData({
-        usuario: perfil,
-        negocio: perfil.negocios,
-        tipo_plan: data.tipo_plan,
-      });
-
-      // 5. Abrir el modal de pago
-      setShowPaymentModal(true);
-
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Error al registrar el negocio');
-      throw err;
-    } finally {
-      isRegistering.current = false;
-      setLoading(false);
-    }
-  };
 
   const switchDemoAccount = async (correo: string, password: string) => {
     await login(correo, password);

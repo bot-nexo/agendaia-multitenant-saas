@@ -24,7 +24,7 @@ export const PendingVerificationScreen: React.FC = () => {
   };
 
   const logout = () => {
-    localStorage.removeItem('sb-szbaltsfqlvbnnvdlkbs-auth-token');
+    localStorage.removeItem('sb-pattorfdjhfhdhnkfssb-auth-token');
     window.location.href = '/login';
   };
 

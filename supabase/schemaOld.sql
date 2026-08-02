@@ -12,6 +12,9 @@ CREATE TABLE public.negocios (
   prompt_personalidad text NOT NULL DEFAULT 'Eres un asistente amable y profesional que agenda citas.'::text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  estado_verificacion USER-DEFINED NOT NULL DEFAULT 'pendiente'::estado_verificacion_enum,
+  fec_expiracion date,
+  fec_ult_pago date,
   CONSTRAINT negocios_pkey PRIMARY KEY (id_negocio)
 );
 CREATE TABLE public.perfiles (
@@ -31,15 +34,17 @@ CREATE TABLE public.perfiles (
 CREATE TABLE public.transacciones_credito (
   id_transaccion uuid NOT NULL DEFAULT gen_random_uuid(),
   id_negocio uuid NOT NULL,
-  id_referencia text,
   monto integer NOT NULL,
-  tipo text NOT NULL DEFAULT 'RECARGA_MANUAL'::text CHECK (tipo = ANY (ARRAY['RECARGA_MANUAL'::text, 'PROMO'::text, 'SUSCRIPCION'::text])),
   descripcion text,
+  id_referencia uuid DEFAULT gen_random_uuid(),
   creado_por uuid,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
+  tipo USER-DEFINED NOT NULL DEFAULT 'RECARGA_MANUAL'::tipo_trans_credito,
+  estado USER-DEFINED NOT NULL DEFAULT 'PENDIENTE'::estado_trans_credito,
   CONSTRAINT transacciones_credito_pkey PRIMARY KEY (id_transaccion),
   CONSTRAINT transacciones_credito_id_negocio_fkey FOREIGN KEY (id_negocio) REFERENCES public.negocios(id_negocio),
-  CONSTRAINT transacciones_credito_creado_por_fkey FOREIGN KEY (creado_por) REFERENCES auth.users(id)
+  CONSTRAINT transacciones_credito_creado_por_fkey FOREIGN KEY (creado_por) REFERENCES auth.users(id),
+  CONSTRAINT transacciones_credito_id_referencia_fkey FOREIGN KEY (id_referencia) REFERENCES public.referencias_pago(id_referencia)
 );
 CREATE TABLE public.empleados (
   id_empleado uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -151,13 +156,15 @@ CREATE TABLE public.solicitudes_recarga (
   CONSTRAINT solicitudes_recarga_id_usuario_solicitante_fkey FOREIGN KEY (id_usuario_solicitante) REFERENCES public.perfiles(id_usuario)
 );
 CREATE TABLE public.referencias_pago (
-  id_referencia text NOT NULL,
+  id_referencia uuid NOT NULL,
   id_negocio uuid NOT NULL,
   referencia character varying NOT NULL,
   fecha_pago date NOT NULL,
   nombre_pagador character varying NOT NULL,
   cedula_pagador character varying NOT NULL,
   creado_en timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  url_referencia text,
+  canal_pago text DEFAULT 'Nequi / Bancolombia'::text,
   CONSTRAINT referencias_pago_pkey PRIMARY KEY (id_referencia),
   CONSTRAINT referencias_pago_id_negocio_fkey1 FOREIGN KEY (id_negocio) REFERENCES public.negocios(id_negocio),
   CONSTRAINT referencias_pago_id_negocio_fkey FOREIGN KEY (id_negocio) REFERENCES public.negocios(id_negocio)

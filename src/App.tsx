@@ -52,7 +52,7 @@ function AppContent() {
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       <Navbar />
       <div className="flex-1">
-        {user.es_superadmin ? <SuperAdminDashboard isLoading={loading} /> : <TenantDashboard />}
+        {user.es_superadmin ? <SuperAdminDashboard /> : <TenantDashboard />}
       </div>
     </div>
   );

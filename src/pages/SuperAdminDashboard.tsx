@@ -90,7 +90,7 @@ export const SuperAdminDashboard: React.FC = () => {
   // Load pending verification businesses
   const loadPendingNegocios = async () => {
     try {
-      setLoading(true)
+      // setLoading(true)
       const data = await api.admin.getNegociosPendientes();
       setNegociosPendientes(data);
       const [solicitudesData, negociosData] = await Promise.all([
@@ -103,7 +103,7 @@ export const SuperAdminDashboard: React.FC = () => {
       console.error('Error loading pending negocios', err);
     }
     finally {
-      setLoading(false)
+      // setLoading(false)
     }
   }
 
@@ -216,12 +216,6 @@ export const SuperAdminDashboard: React.FC = () => {
       alert('Error actualizando suscripción: ' + err.message);
     }
   };
-
-  const loader = () => {
-    return (
-      <FourSquare color={["#3910ea", "#5e3bf2", "#856bf5", "#ac9bf8"]} />
-    )
-  }
 
   const filteredNegocios = negocios.filter(
     (n) =>

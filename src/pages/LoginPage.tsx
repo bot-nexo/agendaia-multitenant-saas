@@ -20,16 +20,16 @@ export const LoginPage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
 
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
+  const [loginEmail, setLoginEmail] = useState('prueba@gmail.com');
+  const [loginPassword, setLoginPassword] = useState('123456');
   const [showPassword, setShowPassword] = useState(false);
 
-  const [regNombreComercial, setRegNombreComercial] = useState('');
-  const [regNombreContacto, setRegNombreContacto] = useState('');
-  const [regTelefono, setRegTelefono] = useState('');
-  const [regEmail, setRegEmail] = useState('');
+  const [regNombreComercial, setRegNombreComercial] = useState('prueba negocio');
+  const [regNombreContacto, setRegNombreContacto] = useState('prueba contacto');
+  const [regTelefono, setRegTelefono] = useState('573007272727');
+  const [regEmail, setRegEmail] = useState('prueba2@nexo.com');
   const [regPassword, setRegPassword] = useState('123456');
-  const [regPlan, setRegPlan] = useState<'basico' | 'pro' | 'enterprise'>('pro');
+  const [regPlan, setRegPlan] = useState<'free' | 'basico' | 'pro' | 'enterprise'>('free');
 
   const [loading, setLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -61,46 +61,94 @@ export const LoginPage: React.FC = () => {
     }
   };
 
+  // const handleRegisterTenant = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   if (!regNombreComercial.trim() || !regEmail.trim() || !regPassword.trim() || !regTelefono.trim()) {
+  //     setAuthError('Por favor complete todos los campos obligatorios.');
+  //     return;
+  //   }
+
+  //   const telefonoNormalizado = normalizarWhatsApp(regTelefono.trim());
+  //   if (!telefonoNormalizado.valido) {
+  //     setAuthError(telefonoNormalizado.mensaje);
+  //     return;
+  //   }
+  //   const passwordNormalizado = validarPassword(regPassword.trim());
+  //   if (!passwordNormalizado.valido) {
+  //     setAuthError(passwordNormalizado.mensaje);
+  //     return;
+  //   }
+  //   setLoading(true);
+  //   setAuthError(null);
+  //   setAuthSuccess(null);
+
+  //   try {
+  //     await registerTenant({
+  //       nombre_comercial: regNombreComercial.trim(),
+  //       nombre_contacto: regNombreContacto.trim(),
+  //       telefono_whatsapp: telefonoNormalizado.numeroNormalizado,
+  //       correo: regEmail.trim(),
+  //       password: passwordNormalizado.passNormal,
+  //       tipo_plan: regPlan,
+  //     });
+
+  //     setAuthSuccess('¡Negocio creado e iniciado con éxito!');
+  //   } catch (err: any) {
+  //     console.log(err);
+  //     setAuthError(err.message || 'Error al registrar el nuevo negocio.');
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
   const handleRegisterTenant = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!regNombreComercial.trim() || !regEmail.trim() || !regPassword.trim() || !regTelefono.trim()) {
-      setAuthError('Por favor complete todos los campos obligatorios.');
-      return;
+  e.preventDefault();
+
+  // 1. Validaciones previas de formulario
+  if (!regNombreComercial.trim() || !regEmail.trim() || !regPassword.trim() || !regTelefono.trim()) {
+    setAuthError('Por favor complete todos los campos obligatorios.');
+    return;
+  }
+
+  const telefonoNormalizado = normalizarWhatsApp(regTelefono.trim());
+  if (!telefonoNormalizado.valido) {
+    setAuthError(telefonoNormalizado.mensaje);
+    return;
+  }
+
+  const passwordNormalizado = validarPassword(regPassword.trim());
+  if (!passwordNormalizado.valido) {
+    setAuthError(passwordNormalizado.mensaje);
+    return;
+  }
+
+  // 2. Limpieza de estados de error / éxito previos
+  setAuthError(null);
+  setAuthSuccess(null);
+
+  try {
+    // 3. Iniciar registro de Tenant
+    await registerTenant({
+      nombre_comercial: regNombreComercial.trim(),
+      nombre_contacto: regNombreContacto.trim(),
+      telefono_whatsapp: telefonoNormalizado.numeroNormalizado,
+      correo: regEmail.trim(),
+      password: passwordNormalizado.passNormal,
+      tipo_plan: regPlan,
+    });
+
+    // 4. Mensaje adecuado al flujo de verificación
+    if (regPlan === 'basico' || regPlan === 'free') {
+      setAuthSuccess('¡Cuenta registrada con éxito! Tu espacio está en revisión por un administrador.');
+    } else {
+      setAuthSuccess('¡Cuenta creada! Completa la subida de tu comprobante en la siguiente ventana.');
     }
 
-    const telefonoNormalizado = normalizarWhatsApp(regTelefono.trim());
-    if (!telefonoNormalizado.valido) {
-      setAuthError(telefonoNormalizado.mensaje);
-      return;
-    }
-    const passwordNormalizado = validarPassword(regPassword.trim());
-    if (!passwordNormalizado.valido) {
-      setAuthError(passwordNormalizado.mensaje);
-      return;
-    }
-    setLoading(true);
-    setAuthError(null);
-    setAuthSuccess(null);
-
-    try {
-      await registerTenant({
-        nombre_comercial: regNombreComercial.trim(),
-        nombre_contacto: regNombreContacto.trim(),
-        telefono_whatsapp: telefonoNormalizado.numeroNormalizado,
-        correo: regEmail.trim(),
-        password: passwordNormalizado.passNormal,
-        tipo_plan: regPlan,
-      });
-
-      setAuthSuccess('¡Negocio creado e iniciado con éxito!');
-    } catch (err: any) {
-      console.log(err);
-      setAuthError(err.message || 'Error al registrar el nuevo negocio.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  } catch (err: any) {
+    console.error('Error en formulario de registro:', err);
+    setAuthError(err.message || 'Error al registrar el nuevo negocio.');
+  }
+};
   //*********************** */
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 sm:p-6">
@@ -297,9 +345,10 @@ export const LoginPage: React.FC = () => {
                   onChange={(e: any) => setRegPlan(e.target.value as any)}
                   className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                 >
-                  <option value="basico">Básico (50 créditos bot - Gratis)</option>
-                  <option value="pro">Pro (300 créditos bot - Recomendado)</option>
-                  <option value="enterprise">Enterprise (1,000 créditos bot)</option>
+                  <option value="free">Free (10 créditos bot - $0/mes)</option>
+                  <option value="basico">Básico (50 créditos bot - $10/mes)</option>
+                  <option value="pro">Pro (300 créditos bot - $20/mes)</option>
+                  <option value="enterprise">Enterprise (1,000 créditos bot - $50/mes)</option>
                 </select>
               </div>
 
